@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SkillFlux | Dashboard</title>
+    <style>
+        :root { --bg: #000; --blue: #3b82f6; --border: #1e293b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: white; padding: 40px; }
+        nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .credit-display { background: #0a0a0a; border: 1px solid var(--blue); padding: 15px 30px; border-radius: 12px; }
+        .skill-input { background: #0a0a0a; border: 1px solid var(--border); padding: 30px; border-radius: 20px; margin: 30px 0; }
+        .feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .skill-card { background: #0a0a0a; border: 1px solid var(--border); padding: 20px; border-radius: 12px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>Authorized Vault</h2>
+        <div class="credit-display">FLUX BALANCE: <span id="user-credits" style="color:var(--blue); font-weight: bold;">0</span></div>
+    </nav>
+
+    <div class="skill-input">
+        <h3>[Broadcast Expertise]</h3>
+        <input type="text" id="skillIn" placeholder="Enter Skill Name" style="padding:12px; width:280px; border-radius:8px; border:1px solid var(--border); background:#000; color:white;">
+        <button id="postBtn" style="padding:12px 25px; background:var(--blue); border:none; color:white; border-radius:8px; cursor:pointer; font-weight:bold;">Broadcast Flux</button>
+    </div>
+
+    <h3>[Live Exchange Feed]</h3>
+    <div id="feed" class="feed"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAE5zrGWCWE_p91wUj2qdJTfx0J1J5PlXU",
+            authDomain: "skillflux-cca7b.firebaseapp.com",
+            projectId: "skillflux-cca7b",
+            storageBucket: "skillflux-cca7b.firebasestorage.app",
+            messagingSenderId: "53465869448",
+            appId: "1:53465869448:web:26802857ee13d96dcb833d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = "index.html";
+            else {
+                // Live Credit Sync
+                onSnapshot(doc(db, "users", user.uid), (s) => { 
+                    if(s.exists()) document.getElementById('user-credits').innerText = s.data().credits; 
+                });
+                
+                // Live Skill Feed Sync
+                const q = query(collection(db, "skills"), orderBy("time", "desc"));
+                onSnapshot(q, (snap) => {
+                    const f = document.getElementById('feed');
+                    f.innerHTML = '';
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        f.innerHTML += `<div class="skill-card"><strong>${data.skill}</strong><br><small style="color:#666">Identity: ${data.owner}</small></div>`;
+                    });
+                });
+            }
+        });
+
+        document.getElementById('postBtn').onclick = async () => {
+            const skill = document.getElementById('skillIn').value;
+            if(skill) {
+                await addDoc(collection(db, "skills"), { 
+                    skill: skill, 
+                    owner: auth.currentUser.email, 
+                    time: new Date() 
+                });
+                document.getElementById('skillIn').value = '';
+            }
+        };
+    </script>
+</body>
+</html>
